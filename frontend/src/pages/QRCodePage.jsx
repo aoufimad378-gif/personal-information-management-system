@@ -19,67 +19,12 @@ function QRCodePage({
   // =========================
 
   function buildEmergencyUrl() {
-
-    if (!selectedProfile) {
-      return ''
-    }
-
-    const params = new URLSearchParams()
-
-
-    if (emergencyVisibility.fullName) {
-      params.set(
-        'name',
-        selectedProfile.fullName || ''
-      )
-    }
-
-
-    if (emergencyVisibility.bloodType) {
-      params.set(
-        'bloodType',
-        selectedProfile.bloodType || ''
-      )
-    }
-
-
-    if (emergencyVisibility.allergies) {
-      params.set(
-        'allergies',
-        selectedProfile.allergies || ''
-      )
-    }
-
-
-    if (emergencyVisibility.emergencyContact) {
-      params.set(
-        'contact',
-        selectedProfile.emergencyContact || ''
-      )
-    }
-
-
-    if (emergencyVisibility.preferredLanguage) {
-      params.set(
-        'language',
-        selectedProfile.preferredLanguage || ''
-      )
-    }
-
-
-    if (emergencyVisibility.emergencyNotes) {
-      params.set(
-        'notes',
-        selectedProfile.emergencyNotes || ''
-      )
-    }
-
-
-    return (
-      `http://192.168.0.145:5174/emergency?${params.toString()}`
-    )
+  if (!selectedProfile || !selectedProfile.publicToken) {
+    return ''
   }
 
+  return `${window.location.origin}/emergency/${selectedProfile.publicToken}`
+}
 
   const qrValue = buildEmergencyUrl()
 

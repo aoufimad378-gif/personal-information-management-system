@@ -1,12 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
-
+import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Profiles from './pages/Profiles'
 import Emergency from './pages/Emergency'
 import QRCodePage from './pages/QRCodePage'
-import PublicEmergency from './pages/PublicEmergency'
-
+import PublicEmergency from './pages/PublicEmergency' 
 
 function App() {
 
@@ -41,7 +40,28 @@ function App() {
     emergencyContact: '',
     emergencyNotes: ''
   })
+  const [currentUser, setCurrentUser] = useState(() => {
+  const storedUser = localStorage.getItem('user')
 
+  return storedUser
+    ? JSON.parse(storedUser)
+    : null
+})
+useEffect(() => {
+  fetch('http://localhost:5050/api/profiles', {
+  headers: {
+  'Content-Type': 'application/json',
+  Authorization: `Bearer ${localStorage.getItem('token')}`
+}
+})
+    .then((response) => response.json())
+    .then((data) => {
+      setProfiles(data)
+    })
+    .catch((error) => {
+      console.error('Error loading profiles:', error)
+    })
+}, [])
 
   // =========================
   // FORM CHANGE
@@ -55,7 +75,11 @@ function App() {
       [name]: value
     })
   }
-
+function handleLogout() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  setCurrentUser(null)
+}
 
   // =========================
   // RESET FORM
@@ -82,25 +106,62 @@ function App() {
   // CREATE / UPDATE PROFILE
   // =========================
 
-  function handleSubmit(event) {
-    event.preventDefault()
+  async function handleSubmit(e) {
+  e.preventDefault()
 
-    if (editingId !== null) {
+  try {
+    // =========================
+    // EDIT EXISTING PROFILE
+    // =========================
+    if (editingId) {
+      const response = await fetch(
+        `http://localhost:5050/api/profiles/${editingId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile')
+      }
+
+      const updatedProfile = await response.json()
 
       setProfiles((currentProfiles) =>
         currentProfiles.map((profile) =>
           profile.id === editingId
-            ? { ...profile, ...formData }
+            ? updatedProfile
             : profile
         )
       )
 
-    } else {
+      setEditingId(null)
+    }
 
-      const newProfile = {
-        id: Date.now(),
-        ...formData
+    // =========================
+    // CREATE NEW PROFILE
+    // =========================
+    else {
+      const response = await fetch(
+        'http://localhost:5050/api/profiles',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to create profile')
       }
+
+      const newProfile = await response.json()
 
       setProfiles((currentProfiles) => [
         ...currentProfiles,
@@ -110,21 +171,43 @@ function App() {
 
     resetForm()
     setShowForm(false)
+
+  } catch (error) {
+    console.error('Profile save error:', error)
   }
+}
 
 
   // =========================
   // DELETE PROFILE
   // =========================
 
-  function handleDelete(id) {
-    setProfiles((currentProfiles) =>
-      currentProfiles.filter(
-        (profile) => profile.id !== id
-      )
+  async function handleDelete(id) {
+  try {
+    const response = await fetch(
+      `http://localhost:5050/api/profiles/${id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      }
     )
-  }
 
+    if (!response.ok) {
+      throw new Error('Failed to delete profile')
+    }
+
+    setProfiles((currentProfiles) =>
+      currentProfiles.filter((profile) => profile.id !== id)
+    )
+
+    console.log('Profile deleted successfully')
+
+  } catch (error) {
+    console.error('Delete profile error:', error)
+  }
+}
 
   // =========================
   // EDIT PROFILE
@@ -186,7 +269,15 @@ function App() {
   if (window.location.pathname.startsWith('/emergency')) {
     return <PublicEmergency />
   }
-
+if (!currentUser) {
+  return (
+    <Login
+      onLogin={(user) => {
+        setCurrentUser(user)
+      }}
+    />
+  )
+}
 
   // =========================
   // NORMAL APPLICATION
@@ -226,7 +317,9 @@ function App() {
           >
             Dashboard
           </button>
-
+<button onClick={handleLogout}>
+  Logout
+</button>
 
           <button
             type="button"
